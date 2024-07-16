@@ -158,7 +158,7 @@ class VGTSVDataset(TSVYamlDataset):
             if self.split == 'train' and not op.exists(self.freq_prior_file):
                 print("Computing frequency prior matrix...")
                 fg_matrix, bg_matrix = self._get_freq_prior()
-                prob_matrix = fg_matrix.astype(np.float32)
+                prob_matrix = fg_matrix.astype(float32)
                 prob_matrix[:, :, 0] = bg_matrix
                 prob_matrix[:, :, 0] += 1
                 prob_matrix /= np.sum(prob_matrix, 2)[:, :, None]

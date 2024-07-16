@@ -1132,9 +1132,9 @@ class Anchors(nn.Module):
                     'anchor': self.buffer[anchor_key].detach()}
 
         if dtype == torch.float16:
-            dtype = np.float16
+            dtype = float16
         else:
-            dtype = np.float32
+            dtype = float32
 
         boxes_all = []
         all_idx_strides = []

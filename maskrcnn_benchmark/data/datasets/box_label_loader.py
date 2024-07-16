@@ -110,19 +110,19 @@ class LabelLoader(object):
     def add_features(self, annotations):
         features = []
         for obj in annotations:
-            features.append(np.frombuffer(base64.b64decode(obj['feature']), np.float32))
+            features.append(np.frombuffer(base64.b64decode(obj['feature']), float32))
         return torch.tensor(features)
 
     def add_scores_all(self, annotations):
         scores_all = []
         for obj in annotations:
-            scores_all.append(np.frombuffer(base64.b64decode(obj['scores_all']), np.float32))
+            scores_all.append(np.frombuffer(base64.b64decode(obj['scores_all']), float32))
         return torch.tensor(scores_all)
 
     def add_boxes_all(self, annotations):
         boxes_all = []
         for obj in annotations:
-            boxes_all.append(np.frombuffer(base64.b64decode(obj['boxes_all']), np.float32).reshape(-1, 4))
+            boxes_all.append(np.frombuffer(base64.b64decode(obj['boxes_all']), float32).reshape(-1, 4))
         return torch.tensor(boxes_all)
 
     def relation_loader(self, relation_annos, target):

@@ -68,9 +68,9 @@ class MixupDetection(data.Dataset):
         # mixup two images
         height = max(img1.shape[0], img2.shape[0])
         width = max(img1.shape[1], img2.shape[1])
-        mix_img = np.zeros((height, width, 3),dtype=np.float32)
-        mix_img[:img1.shape[0], :img1.shape[1], :] = img1.astype(np.float32) * lambd
-        mix_img[:img2.shape[0], :img2.shape[1], :] += img2.astype(np.float32) * (1. - lambd)
+        mix_img = np.zeros((height, width, 3),dtype=float32)
+        mix_img[:img1.shape[0], :img1.shape[1], :] = img1.astype(float32) * lambd
+        mix_img[:img2.shape[0], :img2.shape[1], :] += img2.astype(float32) * (1. - lambd)
         mix_img = mix_img.astype(np.uint8)
 
         y1 = np.hstack((label1, np.full((label1.shape[0], 1), lambd)))
@@ -109,9 +109,9 @@ class MixupDetection(data.Dataset):
         # mixup two images
         height = max(img1.shape[0], img2.shape[0])
         width = max(img1.shape[1], img2.shape[1])
-        mix_img = np.zeros((height, width, 3),dtype=np.float32)
-        mix_img[:img1.shape[0], :img1.shape[1], :] = img1.astype(np.float32) * lambd
-        mix_img[:img2.shape[0], :img2.shape[1], :] += img2.astype(np.float32) * (1. - lambd)
+        mix_img = np.zeros((height, width, 3),dtype=float32)
+        mix_img[:img1.shape[0], :img1.shape[1], :] = img1.astype(float32) * lambd
+        mix_img[:img2.shape[0], :img2.shape[1], :] += img2.astype(float32) * (1. - lambd)
         mix_img = mix_img.astype(np.uint8)
 
         y1 = np.hstack((label1, np.full((label1.shape[0], 1), lambd)))

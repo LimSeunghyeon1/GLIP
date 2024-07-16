@@ -2,11 +2,17 @@
 #include <ATen/ATen.h>
 #include <ATen/cuda/CUDAContext.h>
 
-#include <THC/THC.h>
-#include <THC/THCDeviceUtils.cuh>
+// #include <THC/THC.h>
+// #include <THC/THCDeviceUtils.cuh>
+#include <ATen/cuda/CUDAEvent.h>
+#include "ATen/cuda/DeviceUtils.cuh"
+#include <ATen/ceil_div.h>
+#include <ATen/cuda/ThrustAllocator.h>
 
 #include <vector>
 #include <iostream>
+
+using namespace std;
 
 int const threadsPerBlock = sizeof(unsigned long long) * 8;
 
@@ -61,7 +67,8 @@ __global__ void nms_kernel(const int n_boxes, const float nms_overlap_thresh,
         t |= 1ULL << i;
       }
     }
-    const int col_blocks = THCCeilDiv(n_boxes, threadsPerBlock);
+    // const int col_blocks = at::ceil_div(n_boxes, threadsPerBlock);
+    const int col_blocks = at::ceil_div(n_boxes, threadsPerBlock);
     dev_mask[cur_box_idx * col_blocks + col_start] = t;
   }
 }
@@ -76,20 +83,33 @@ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
 
   int boxes_num = boxes.size(0);
 
-  const int col_blocks = THCCeilDiv(boxes_num, threadsPerBlock);
-
+  // const int col_blocks = at::ceil_div(boxes_num, threadsPerBlock);
+  const int col_blocks = at::ceil_div(boxes_num, threadsPerBlock);
   scalar_t* boxes_dev = boxes_sorted.data_ptr<scalar_t>();
 
-  THCState *state = at::globalContext().lazyInitCUDA(); // TODO replace with getTHCState
-
+  // THCState *state = at::globalContext().lazyInitCUDA(); // TODO replace with getTHCState
+  size_t size = boxes_num * col_blocks * sizeof(unsigned long long);
   unsigned long long* mask_dev = NULL;
   //THCudaCheck(THCudaMalloc(state, (void**) &mask_dev,
   //                      boxes_num * col_blocks * sizeof(unsigned long long)));
 
-  mask_dev = (unsigned long long*) THCudaMalloc(state, boxes_num * col_blocks * sizeof(unsigned long long));
+  // mask_dev = (unsigned long long*) THCudaMalloc(state, boxes_num * col_blocks * sizeof(unsigned long long));
 
-  dim3 blocks(THCCeilDiv(boxes_num, threadsPerBlock),
-              THCCeilDiv(boxes_num, threadsPerBlock));
+  // mask_dev = static_cast<unsigned long long*>(at::cuda::getCurrentCUDAStream().malloc(size)); 
+  // 2. cudaMalloc을 사용하여 디바이스 메모리 할당
+  cudaError_t err = cudaMalloc(reinterpret_cast<void**>(&mask_dev), size);
+
+  // 3. 할당 실패 시 오류 처리
+  if (err != cudaSuccess) {
+      std::cerr << "CUDA malloc failed: " << cudaGetErrorString(err) << std::endl;
+      exit(0);  // 필요에 따라 함수 종료 또는 예외 처리
+  }
+
+
+  // dim3 blocks(at::ceil_div(boxes_num, threadsPerBlock),
+  //             at::ceil_div(boxes_num, threadsPerBlock));
+  dim3 blocks(at::ceil_div(boxes_num, threadsPerBlock),
+              at::ceil_div(boxes_num, threadsPerBlock));
   dim3 threads(threadsPerBlock);
   nms_kernel<<<blocks, threads>>>(boxes_num,
                                   nms_overlap_thresh,
@@ -97,10 +117,15 @@ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
                                   mask_dev);
 
   std::vector<unsigned long long> mask_host(boxes_num * col_blocks);
-  THCudaCheck(cudaMemcpy(&mask_host[0],
+  // THCudaCheck(cudaMemcpy(&mask_host[0],
+                        // mask_dev,
+                        // sizeof(unsigned long long) * boxes_num * col_blocks,
+                        // cudaMemcpyDeviceToHost));
+    AT_CUDA_CHECK(cudaMemcpy(&mask_host[0],
                         mask_dev,
                         sizeof(unsigned long long) * boxes_num * col_blocks,
                         cudaMemcpyDeviceToHost));
+
 
   std::vector<unsigned long long> remv(col_blocks);
   memset(&remv[0], 0, sizeof(unsigned long long) * col_blocks);
@@ -122,7 +147,10 @@ at::Tensor nms_cuda(const at::Tensor boxes, float nms_overlap_thresh) {
     }
   }
 
-  THCudaFree(state, mask_dev);
+  // THCudaFree(state, mask_dev);
+  // at::cuda::getCurrentCUDAStream().free(mask_dev);
+  cudaFree(mask_dev);
+
   // TODO improve this part
   return std::get<0>(order_t.index({
                        keep.narrow(/*dim=*/0, /*start=*/0, /*length=*/num_to_keep).to(

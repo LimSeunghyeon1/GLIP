@@ -441,7 +441,7 @@ def calc_detection_voc_prec_rec(pred_boxlists, gt_boxlists, classindex, iou_thre
     rec = tp / float(npos)
     # avoid divide by zero in case the first detection matches a difficult
     # ground truth
-    prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
+    prec = tp / np.maximum(tp + fp, np.finfo(float64).eps)
     ap = voc_ap(rec, prec, use_07_metric)
 
     return rec, prec, ap, sorted_scores, npos
